@@ -109,3 +109,8 @@ button:hover {
     border: 0;
   }
 }
+
+#send-mail,#back {
+	color: red;
+	text-decoration: none;
+}

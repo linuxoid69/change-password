@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# coding: utf-8
 import bottle
 from bottle import get, post, static_file, request, route, template
 from bottle import SimpleTemplate
@@ -9,12 +9,33 @@ from ldap3 import AUTH_SIMPLE, SUBTREE
 from ldap3.core.exceptions import LDAPConstraintViolationResult, LDAPUserNameIsMandatoryError
 import os
 from os import path
-
+import sys
+# Устанавливаем кодировку
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 @get('/')
 def get_index():
     return index_tpl()
 
+@get('/email')
+def get_email():
+    return email_tpl()
+
+@post('/email')
+def post_email():
+    form = request.forms.getunicode
+    email = form('email')
+    try: 
+	# каптча 
+	find_email(connect_ldap, email)
+
+	# Высылаем линк на почту для подтверждения 
+        return email_tpl(alerts=[('success', "Пароль был отправлен на почту")])
+    except IndexError:
+	msg = 'Пользователь с таким ящиком не найден'
+        return email_tpl(alerts=[('error', "Пользователь с таким ящиком не найден")])
+    	
 
 @post('/')
 def post_index():
@@ -37,7 +58,7 @@ def post_index():
 
     print("Password successfully changed for: %s" % form('username'))
 
-    return index_tpl(alerts=[('success', "Password has been changed")])
+    return index_tpl(alerts=[('success', "Пароль был успешно изменен")])
 
 
 @route('/static/<filename>', name='static')
@@ -48,6 +69,8 @@ def serve_static(filename):
 def index_tpl(**kwargs):
     return template('index', **kwargs)
 
+def email_tpl(**kwargs):
+    return template('email', **kwargs)
 
 def connect_ldap(**kwargs):
     server = Server(CONF['ldap']['host'], int(CONF['ldap']['port']), connect_timeout=5)
@@ -63,7 +86,8 @@ def change_password(*args):
             change_password_ldap(*args)
 
     except (LDAPBindError, LDAPInvalidCredentialsResult, LDAPUserNameIsMandatoryError):
-        raise Error('Username or password is incorrect!')
+	error = 'Ошибка'
+        raise Error(error)
 
     except LDAPConstraintViolationResult as e:
         # Extract useful part of the error message (for Samba 4 / AD).
@@ -92,7 +116,19 @@ def change_password_ad(username, old_pass, new_pass):
 
 def find_user_dn(conn, uid):
     search_filter = CONF['ldap']['search_filter'].replace('{uid}', uid)
-    conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn'])
+    conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn','mail'])
+#    print conn.response
+#    print conn.response[0]['attributes']['mail']
+
+    return conn.response[0]['dn'] if conn.response else None
+
+
+def find_email(conn, email):
+    search_filter = 'mail=%s' % email
+    with connect_ldap() as conn:
+       conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn','mail'])
+       print conn.response
+       print conn.response[0]['attributes']['mail']
 
     return conn.response[0]['dn'] if conn.response else None
 

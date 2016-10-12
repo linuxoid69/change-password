@@ -16,21 +16,23 @@
       <h1>{{ page_title }}</h1>
 
       <form method="post">
-        <label for="username">Username</label>
+        <label for="username">Имя пользователя</label>
         <input id="username" name="username" value="{{ get('username', '') }}" type="text" required autofocus>
 
-        <label for="old-password">Old password</label>
+        <label for="old-password">Старый пароль</label>
         <input id="old-password" name="old-password" type="password" required>
 
-        <label for="new-password">New password</label>
+        <label for="new-password">Новый пароль</label>
         <input id="new-password" name="new-password" type="password"
             pattern=".{8,}" x-moz-errormessage="Password must be at least 8 characters long." required>
 
-        <label for="confirm-password">Confirm new password</label>
+        <label for="confirm-password">Повторите новый пароль</label>
         <input id="confirm-password" name="confirm-password" type="password"
             pattern=".{8,}" x-moz-errormessage="Password must be at least 8 characters long." required>
 
-        <button type="submit">Update password</button>
+        <button type="submit">Обновить пароль</button>
+      </br>
+      <a id='send-mail'. href="/email">Выслать пароль на почту</a>
       </form>
 
       <div class="alerts">
