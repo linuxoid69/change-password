@@ -10,6 +10,11 @@ from ldap3.core.exceptions import LDAPConstraintViolationResult, LDAPUserNameIsM
 import os
 from os import path
 import sys
+import uuid 
+from captcha.image import ImageCaptcha
+
+
+
 # Устанавливаем кодировку
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -20,21 +25,28 @@ def get_index():
 
 @get('/email')
 def get_email():
-    return email_tpl()
+    global captcha,relative_path_captcha
+    captcha = str(uuid.uuid1())[:5]
+    relative_path_captcha = '%s%s.png'   % (CONF['captcha']['path_image'], captcha[:4])
+    full_path_captcha = '%s/%s'   % (os.getcwdu(), relative_path_captcha)
+    image = ImageCaptcha(fonts = [CONF['captcha']['font'], CONF['captcha']['font']])
+    data = image.generate(captcha)
+    image.write(captcha, full_path_captcha)
+    return email_tpl(path_captcha = relative_path_captcha)
 
 @post('/email')
 def post_email():
     form = request.forms.getunicode
     email = form('email')
-    try: 
+    if (captcha != form('captcha')):
+        return email_tpl(alerts=[('error', "Неверный код")], path_captcha = relative_path_captcha)
+    try:
 	# каптча 
 	find_email(connect_ldap, email)
-
 	# Высылаем линк на почту для подтверждения 
-        return email_tpl(alerts=[('success', "Пароль был отправлен на почту")])
+        return email_tpl(alerts = [('success', "Пароль был отправлен на почту")], path_captcha = relative_path_captcha)
     except IndexError:
-	msg = 'Пользователь с таким ящиком не найден'
-        return email_tpl(alerts=[('error', "Пользователь с таким ящиком не найден")])
+        return email_tpl(alerts = [('error', "Пользователь с таким ящиком не найден")],path_captcha = relative_path_captcha)
     	
 
 @post('/')

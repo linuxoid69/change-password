@@ -1,0 +1,17 @@
+[html]
+page_title = Изменение пароля на example.com
+
+[ldap]
+host = localhost
+port = 389
+base = ou=people,dc=example,dc=com
+search_filter = cn={uid}
+
+[server]
+server = auto
+host = 0.0.0.0
+port = 8080
+
+[captcha]
+font = /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+path_image= /static/

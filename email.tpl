@@ -16,11 +16,14 @@
       <h1>{{ page_title }}</h1>
 
       <form method="post">
-        <label for="username">Почтовый ящик</label>
-        <input id="email" name="email" value="{{ get('email', '') }}" type="text" required autofocus>
-
+        <label for="email">Почтовый ящик</label>
+        <input id="email" name="email" value="{{ get('email', '') }}" type="email" required autofocus>
+	<img src="{{path_captcha}}">
+	<label for="captcha">Код</label>
+	<input id="captcha" name="captcha" type='text' required>
         <button type="submit">Отправить пароль</button></br>
 	<a id='back' href='/'>&lt; Назад</a>
+	
       </form>
 
       <div class="alerts">
