@@ -12,8 +12,7 @@ from os import path
 import sys
 import uuid 
 from captcha.image import ImageCaptcha
-
-
+from lib.mail import Email
 
 # Устанавливаем кодировку
 reload(sys)
@@ -43,10 +42,33 @@ def post_email():
     try:
 	# каптча 
 	find_email(connect_ldap, email)
+
+	sm = Email(CONF['mail']['smtp'],
+                   int(CONF['mail']['port']),
+                   CONF['mail']['login'],
+                   CONF['mail']['passwd'])
+
+	html_message = """\
+		<html>
+		  <head></head>
+		  <body>
+		    <p>Восстановление пароля!<br>
+		       На это письмо не нужно отвечать.<br>
+		       Перейдите по <a href="http://ldap.sotasystem.ru">ссылке</a> для восстановление пароля<br>
+		       Или скопируйте ее в буфер обмена и вставьте в браузер.<br>
+		       http://ldap.sotasystem.ru
+		    </p>
+		  </body>
+		</html>
+	  	"""
+	sm.send_mail(CONF['mail']['login'], email, 'Восстановление пароля', html_message)
 	# Высылаем линк на почту для подтверждения 
-        return email_tpl(alerts = [('success', "Пароль был отправлен на почту")], path_captcha = relative_path_captcha)
+        return email_tpl(alerts = [('success', "Пароль был отправлен на почту")], 
+                         path_captcha = relative_path_captcha)
     except IndexError:
-        return email_tpl(alerts = [('error', "Пользователь с таким ящиком не найден")],path_captcha = relative_path_captcha)
+
+        return email_tpl(alerts = [('error', "Пользователь с таким ящиком не найден")],
+                         path_captcha = relative_path_captcha)
     	
 
 @post('/')
@@ -86,7 +108,6 @@ def email_tpl(**kwargs):
 
 def connect_ldap(**kwargs):
     server = Server(CONF['ldap']['host'], int(CONF['ldap']['port']), connect_timeout=5)
-
     return Connection(server, raise_exceptions=True, **kwargs)
 
 
@@ -129,9 +150,6 @@ def change_password_ad(username, old_pass, new_pass):
 def find_user_dn(conn, uid):
     search_filter = CONF['ldap']['search_filter'].replace('{uid}', uid)
     conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn','mail'])
-#    print conn.response
-#    print conn.response[0]['attributes']['mail']
-
     return conn.response[0]['dn'] if conn.response else None
 
 
@@ -139,16 +157,13 @@ def find_email(conn, email):
     search_filter = 'mail=%s' % email
     with connect_ldap() as conn:
        conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn','mail'])
-       print conn.response
-       print conn.response[0]['attributes']['mail']
 
     return conn.response[0]['dn'] if conn.response else None
 
-
+    
 def read_config():
     config = ConfigParser()
     config.read([path.join(BASE_DIR, 'settings.ini'), os.getenv('CONF_FILE', '')])
-
     return config
 
 
