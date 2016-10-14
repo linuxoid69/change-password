@@ -1,3 +1,6 @@
-bottle>=0.12.8
-ldap3>=0.9
-configparser; python_version < '3.3'
+bottle==0.12.10
+captcha==0.2.1
+configparser==3.5.0
+ldap3==1.4.0
+Pillow==3.4.1
+pyasn1==0.1.9
