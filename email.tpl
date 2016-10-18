@@ -14,18 +14,18 @@
   <body>
     <main>
       <h1>{{ page_title }}</h1>
-
+    %if ok == '0':
       <form method="post">
         <label for="email">Почтовый ящик</label>
         <input id="email" name="email" value="{{ get('email', '') }}" type="email" required autofocus>
-	<img src="{{path_captcha}}">
-	<label for="captcha">Код</label>
-	<input id="captcha" name="captcha" type='text' required>
+	    <img src="{{path_captcha}}">
+	    <label for="captcha">Код</label>
+	    <input id="captcha" name="captcha" type='text' required>
         <button type="submit">Отправить пароль</button></br>
-	<a id='back' href='/'>&lt; Назад</a>
+      	<a id='back' href='/'>&lt; Назад</a>
 	
       </form>
-
+      %end
       <div class="alerts">
         %for type, text in get('alerts', []):
           <div class="alert {{ type }}">{{ text }}</div>
