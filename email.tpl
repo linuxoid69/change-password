@@ -23,11 +23,13 @@
 	    <input id="captcha" name="captcha" type='text' required>
         <button type="submit">Отправить пароль</button></br>
       	<a id='back' href='/'>&lt; Назад</a>
-	
+
       </form>
       %end
+        %if ok != '0':
+        <a id='mainpage' href="/">На главную</a>
+        %end
       <div class="alerts">
-
         %for type, text in get('alerts', []):
           <div class="alert {{ type }}">{{ text }}</div>
         %end

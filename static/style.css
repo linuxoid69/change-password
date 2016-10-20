@@ -114,3 +114,7 @@ button:hover {
 	color: red;
 	text-decoration: none;
 }
+
+#mainpage {
+  align-content: center;
+}

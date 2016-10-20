@@ -64,6 +64,11 @@ def post_email(db):
         hash_session = sha1(id_user)
         id_session = str(hash_session.hexdigest())
         ip = str(request.environ.get('REMOTE_ADDR'))
+        print check_db_email(db, email)
+        if check_db_email(db, email):
+            return email_tpl(alerts=[('error', "Письмо уже было отправлено вам на почту.(Проверьте спам)")],
+                             path_captcha=relative_path_captcha, ok='0')
+
         db.execute(
             "INSERT INTO user_code (id_user, id_session, email, date_start, ip) VALUES ('{0:s}','{1:s}','{2:s}','{3:d}','{4:s}')"
                 .format(id_user, id_session, email, unixtime(), ip))
@@ -79,9 +84,10 @@ def post_email(db):
         <body>
     	    <p>Восстановление пароля!<br>
     	       На это письмо не нужно отвечать.<br>
-    	       Перейдите по <a href="http://ldap.sotasystem.ru?id_user={0:s}&id_session={1:s}">ссылке</a> для восстановление пароля<br>
+    	       Перейдите по <a href="http://ldap.sotasystem.ru/restore/{0:s}/{1:s}">ссылке</a> для восстановление пароля<br>
     	       Или скопируйте ее в буфер обмена и вставьте в браузер.<br>
-               http://ldap.sotasystem.ru/?id_user={0:s}&id_session={1:s}
+               http://ldap.sotasystem.ru/restore/{0:s}/{1:s}
+               Ссылка действительна в течении 24 часов.
             </p>
         </body>
         </html>
@@ -123,6 +129,14 @@ def post_index():
 @route('/static/<filename>', name='static')
 def serve_static(filename):
     return static_file(filename, root=path.join(BASE_DIR, 'static'))
+
+
+@route('/restore/<id_user>/<id_session>')
+def serve_static(db, id_user, id_session):
+    if redirect_to_change_passwd(db, id_user, id_session):
+        return 'перенаправляем на страницу восстановления пароля'
+    else:
+        return 'Возспользуйтейсь формой восстановления пароля'
 
 
 def index_tpl(**kwargs):
@@ -212,6 +226,22 @@ def unixtime():
     """
     now = datetime.datetime.now()
     return int(time.mktime(now.timetuple()))
+
+
+def check_db_email(db, email):
+    """
+    Проверяем высылалось ли письмо на почту
+     если да, то True
+    :return:
+    """
+    row = db.execute('SELECT email FROM user_code WHERE email="{0:s}" LIMIT 1'.format(email)).fetchone()
+    return True if row else False
+
+
+def redirect_to_change_passwd(db, id_user, id_session):
+    row = db.execute('SELECT email FROM user_code WHERE id_user="{0}"  AND id_session="{1}" LIMIT 1'
+                     .format(id_user, id_session)).fetchone()
+    return True if row else False
 
 
 def read_config():
