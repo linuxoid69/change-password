@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 import bottle
-from bottle import get, post, static_file, request, route, template
+from bottle import get, post, static_file, request, route, template, install
 from bottle import SimpleTemplate
 from configparser import ConfigParser
 from ldap3 import Connection, LDAPBindError, LDAPInvalidCredentialsResult, Server
@@ -11,9 +11,15 @@ import os
 from os import path
 import sys
 import uuid
+from bottle.ext import sqlite
+from hashlib import sha1
+import time
+import datetime
+
 from captcha.image import ImageCaptcha
 
 from lib.mail import Email
+
 # from lib.captcha import Captcha
 
 
@@ -21,6 +27,9 @@ from lib.mail import Email
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+# подключаем базу
+plugin = sqlite.Plugin(dbfile='user_code.db')
+install(plugin)
 
 
 @get('/')
@@ -30,9 +39,6 @@ def get_index():
 
 @get('/email')
 def get_email():
-    # captcha = Captcha(CONF['captcha']['path_image'],
-    #                   CONF['captcha']['font'])
-
     global captcha, relative_path_captcha, full_path_captcha
     captcha = str(uuid.uuid1())[:5]
     relative_path_captcha = '%s%s.png' % (CONF['captcha']['path_image'], captcha[:4])
@@ -44,16 +50,23 @@ def get_email():
 
 
 @post('/email')
-def post_email():
+def post_email(db):
     form = request.forms.getunicode
     email = form('email')
     if (captcha != form('captcha')):
-        return email_tpl(alerts=[('error', "Неверный код")], path_captcha=relative_path_captcha)
+        return email_tpl(alerts=[('error', "Неверный код")], path_captcha=relative_path_captcha, ok='0')
 
         # каптча
 
-    if find_email(connect_ldap, email) != None:
-
+    if find_email(email) != None:
+        hash_user = sha1(email)
+        id_user = str(hash_user.hexdigest())
+        hash_session = sha1(id_user)
+        id_session = str(hash_session.hexdigest())
+        ip = str(request.environ.get('REMOTE_ADDR'))
+        db.execute(
+            "INSERT INTO user_code (id_user, id_session, email, date_start, ip) VALUES ('{0:s}','{1:s}','{2:s}','{3:d}','{4:s}')"
+                .format(id_user, id_session, email, unixtime(), ip))
 
         sm = Email(CONF['mail']['smtp'],
                    int(CONF['mail']['port']),
@@ -66,24 +79,21 @@ def post_email():
         <body>
     	    <p>Восстановление пароля!<br>
     	       На это письмо не нужно отвечать.<br>
-    	       Перейдите по <a href="http://ldap.sotasystem.ru">ссылке</a> для восстановление пароля<br>
+    	       Перейдите по <a href="http://ldap.sotasystem.ru?id_user={0:s}&id_session={1:s}">ссылке</a> для восстановление пароля<br>
     	       Или скопируйте ее в буфер обмена и вставьте в браузер.<br>
-            http://ldap.sotasystem.ru
+               http://ldap.sotasystem.ru/?id_user={0:s}&id_session={1:s}
             </p>
         </body>
         </html>
-        """
+        """.format(id_user, id_session)
         # Высылаем линк на почту для подтверждения
-        # os.unlink(full_path_captcha)
+
         sm.send_mail(CONF['mail']['login'], email, 'Восстановление пароля', html_message)
         return email_tpl(alerts=[('success', "Пароль был отправлен на почту")],
-                     path_captcha=relative_path_captcha, ok='1')
+                         path_captcha=relative_path_captcha, ok='1')
     else:
-        # os.unlink(full_path_captcha)
         return email_tpl(alerts=[('error', "Пользователь с таким ящиком не найден")],
                          path_captcha=relative_path_captcha, ok='0')
-
-
 
 
 @post('/')
@@ -146,6 +156,13 @@ def change_password(*args):
 
 
 def change_password_ldap(username, old_pass, new_pass):
+    """
+    Меняем пользователю пароль
+    :param username:
+    :param old_pass:
+    :param new_pass:
+    :return:
+    """
     with connect_ldap() as c:
         user_dn = find_user_dn(c, username)
 
@@ -165,20 +182,43 @@ def change_password_ad(username, old_pass, new_pass):
 
 
 def find_user_dn(conn, uid):
+    """
+    Ищем пользователя по его uid
+    :param conn:
+    :param uid:
+    :return:
+    """
     search_filter = CONF['ldap']['search_filter'].replace('{uid}', uid)
-    conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn', 'mail'])
+    conn.search(CONF['ldap']['base'], u"({0:s})".format(search_filter), SUBTREE, attributes=['dn', 'mail'])
     return conn.response[0]['dn'] if conn.response else None
 
 
-def find_email(conn, email):
+def find_email(email):
+    """
+    Поиск почтового ящика в ldap
+    :param email:
+    :return:
+    """
     search_filter = 'mail=%s' % email
     with connect_ldap() as conn:
         conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn', 'mail'])
+        return conn.response[0]['attributes']['mail'] if conn.response else None
 
-    return conn.response[0]['dn'] if conn.response else None
+
+def unixtime():
+    """
+    Возвращает время в формате unixtime
+    :return:
+    """
+    now = datetime.datetime.now()
+    return int(time.mktime(now.timetuple()))
 
 
 def read_config():
+    """
+    Читаем конфиг
+    :return:
+    """
     config = ConfigParser()
     config.read([path.join(BASE_DIR, 'settings.ini'), os.getenv('CONF_FILE', '')])
     return config

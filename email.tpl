@@ -27,6 +27,7 @@
       </form>
       %end
       <div class="alerts">
+
         %for type, text in get('alerts', []):
           <div class="alert {{ type }}">{{ text }}</div>
         %end
