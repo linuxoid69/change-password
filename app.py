@@ -5,7 +5,7 @@ from bottle import get, post, static_file, request, route, template, install
 from bottle import SimpleTemplate
 from configparser import ConfigParser
 from ldap3 import Connection, LDAPBindError, LDAPInvalidCredentialsResult, Server
-from ldap3 import AUTH_SIMPLE, SUBTREE
+from ldap3 import AUTH_SIMPLE, SUBTREE, MODIFY_REPLACE
 from ldap3.core.exceptions import LDAPConstraintViolationResult, LDAPUserNameIsMandatoryError
 import os
 from os import path
@@ -64,14 +64,15 @@ def post_email(db):
         hash_session = sha1(id_user)
         id_session = str(hash_session.hexdigest())
         ip = str(request.environ.get('REMOTE_ADDR'))
-        print check_db_email(db, email)
+        user_name = find_email(email)['cn'][0]
         if check_db_email(db, email):
             return email_tpl(alerts=[('error', "Письмо уже было отправлено вам на почту.(Проверьте спам)")],
                              path_captcha=relative_path_captcha, ok='0')
 
         db.execute(
-            "INSERT INTO user_code (id_user, id_session, email, date_start, ip) VALUES ('{0:s}','{1:s}','{2:s}','{3:d}','{4:s}')"
-                .format(id_user, id_session, email, unixtime(), ip))
+            "INSERT INTO user_code (id_user, id_session, email, username, date_start, ip) "
+            "VALUES ('{0:s}','{1:s}','{2:s}','{3:s}','{4:d}','{5:s}')"
+                .format(id_user, id_session, email, user_name, unixtime(), ip))
 
         sm = Email(CONF['mail']['smtp'],
                    int(CONF['mail']['port']),
@@ -126,6 +127,47 @@ def post_index():
     return index_tpl(alerts=[('success', "Пароль был успешно изменен")])
 
 
+# TODO переделать запрос в базу, а также отправку почты.
+@post('/restore/<id_user>/<id_session>')
+def restore_passwd(db, id_user, id_session):
+    form = request.forms.getunicode
+    if (form('passwd_1') == form('passwd_2')):
+        username = db.execute('SELECT username FROM user_code WHERE id_user="{0:s}"  '
+                              'AND id_session="{1:s}" LIMIT 1'.format(id_user, id_session)).fetchone()[0]
+
+        email = db.execute('SELECT email FROM user_code WHERE id_user="{0:s}"  '
+                           'AND id_session="{1:s}" LIMIT 1'.format(id_user, id_session)).fetchone()[0]
+
+        change_password_ldap_privileges(username, form('passwd_1'))
+
+        db.execute('DELETE FROM user_code WHERE id_user="{0:s}" AND id_session="{1:s}"'.format(id_user, id_session))
+
+        sm = Email(CONF['mail']['smtp'],
+                   int(CONF['mail']['port']),
+                   CONF['mail']['login'],
+                   CONF['mail']['passwd'])
+
+        html_message = """\
+            <html>
+            <head></head>
+            <body>
+        	    <p><br>
+                    Ваш пароль успешно изменен.
+                    Логин:{0:s}
+                    Пароль:{1:s}
+                </p>
+            </body>
+            </html>
+            """.format(username, form('passwd_1'))
+        # Высылаем линк на почту для подтверждения
+
+        sm.send_mail(CONF['mail']['login'], email, 'Восстановление пароля', html_message)
+
+        return passwd_tpl(alerts=[('success', "Пароль успешно изменен, а так же продублирован на почту.")])
+    else:
+        return passwd_tpl(alerts=[('error', "Пароли не совпадают")])
+
+
 @route('/static/<filename>', name='static')
 def serve_static(filename):
     return static_file(filename, root=path.join(BASE_DIR, 'static'))
@@ -134,17 +176,22 @@ def serve_static(filename):
 @route('/restore/<id_user>/<id_session>')
 def serve_static(db, id_user, id_session):
     if redirect_to_change_passwd(db, id_user, id_session):
-        return 'перенаправляем на страницу восстановления пароля'
+        return passwd_tpl()
     else:
         return 'Возспользуйтейсь формой восстановления пароля'
 
 
+# отрисовка шаблонов
 def index_tpl(**kwargs):
     return template('index', **kwargs)
 
 
 def email_tpl(**kwargs):
     return template('email', **kwargs)
+
+
+def passwd_tpl(**kwargs):
+    return template('passwd', **kwargs)
 
 
 def connect_ldap(**kwargs):
@@ -195,6 +242,21 @@ def change_password_ad(username, old_pass, new_pass):
         c.extend.microsoft.modify_password(user_dn, new_pass, old_pass)
 
 
+def change_password_ldap_privileges(user_ldap, new_passwd):
+    """
+    Изменение пароля с правами администратора
+    не требует старый пароль.
+    :param user:
+    :param new_passwd:
+    :return:
+    """
+
+    with connect_ldap(user=CONF['ldap']['admin_user'], password=CONF['ldap']['admin_pass']) as c:
+        c.bind()
+        username = 'cn={0:s},{1:s}'.format(user_ldap, CONF['ldap']['base'])
+        c.modify(username, {'userPassword': [(MODIFY_REPLACE, [new_passwd])]})
+
+
 def find_user_dn(conn, uid):
     """
     Ищем пользователя по его uid
@@ -214,9 +276,13 @@ def find_email(email):
     :return:
     """
     search_filter = 'mail=%s' % email
+    response = {}
     with connect_ldap() as conn:
-        conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn', 'mail'])
-        return conn.response[0]['attributes']['mail'] if conn.response else None
+        conn.search(CONF['ldap']['base'], "(%s)" % search_filter, SUBTREE, attributes=['dn', 'mail', 'cn'])
+        response['mail'] = conn.response[0]['attributes']['mail'] if conn.response else None
+        response['cn'] = conn.response[0]['attributes']['cn'] if conn.response else None
+
+        return response if conn.response else None
 
 
 def unixtime():

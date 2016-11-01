@@ -6,6 +6,8 @@ host = localhost
 port = 389
 base = ou=people,dc=example,dc=com
 search_filter = cn={uid}
+admin_user = cn=admin,dc=example,dc=com
+admin_pass = secret
 
 [server]
 server = auto
@@ -15,3 +17,10 @@ port = 8080
 [captcha]
 font = /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 path_image= /static/
+
+[mail]
+
+smtp = smtp.yandex.ru
+port = 465
+login = noreply@example.ru
+passwd = secret
