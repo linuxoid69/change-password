@@ -152,9 +152,9 @@ def restore_passwd(db, id_user, id_session):
             <head></head>
             <body>
         	    <p><br>
-                    Ваш пароль успешно изменен.
-                    Логин:{0:s}
-                    Пароль:{1:s}
+                    Ваш пароль успешно изменен.<br>
+                    Логин:{0:s}<br>
+                    Пароль:{1:s}<br>
                 </p>
             </body>
             </html>
