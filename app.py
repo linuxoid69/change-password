@@ -27,10 +27,6 @@ from lib.mail import Email
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-# подключаем базу
-plugin = sqlite.Plugin(dbfile='user_code.db')
-install(plugin)
-
 
 @get('/')
 def get_index():
@@ -332,7 +328,9 @@ bottle.TEMPLATE_PATH = [BASE_DIR]
 # Set default attributes to pass into templates.
 SimpleTemplate.defaults = dict(CONF['html'])
 SimpleTemplate.defaults['url'] = bottle.url
-
+# подключаем базу
+plugin = sqlite.Plugin(dbfile=CONF['db']['dbname'])
+install(plugin)
 # Run bottle internal server when invoked directly (mainly for development).
 if __name__ == '__main__':
     bottle.run(**CONF['server'])

@@ -24,3 +24,6 @@ smtp = smtp.yandex.ru
 port = 465
 login = noreply@example.ru
 passwd = secret
+
+[db]
+dbname = local.db
