@@ -18,6 +18,7 @@ hostname = mydomane-name
 [captcha]
 font = /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
 path_image= /static/
+expire = 300
 
 [mail]
 
