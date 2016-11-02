@@ -81,14 +81,14 @@ def post_email(db):
         <body>
     	    <p>Восстановление пароля!<br>
     	       На это письмо не нужно отвечать.<br>
-    	       Перейдите по <a href="http://ldap.sotasystem.ru/restore/{0:s}/{1:s}">ссылке</a> для восстановление пароля<br>
+    	       Перейдите по <a href="http://{2:s}/restore/{0:s}/{1:s}">ссылке</a> для восстановление пароля<br>
     	       Или скопируйте ее в буфер обмена и вставьте в браузер.<br>
-               http://ldap.sotasystem.ru/restore/{0:s}/{1:s}
+               http://{2:s}/restore/{0:s}/{1:s}
                Ссылка действительна в течении 24 часов.
             </p>
         </body>
         </html>
-        """.format(id_user, id_session)
+        """.format(id_user, id_session, CONF['server']['hostname'])
         # Высылаем линк на почту для подтверждения
 
         sm.send_mail(CONF['mail']['login'], email, 'Восстановление пароля', html_message)
@@ -174,7 +174,7 @@ def serve_static(db, id_user, id_session):
     if redirect_to_change_passwd(db, id_user, id_session):
         return passwd_tpl()
     else:
-        return 'Возспользуйтейсь формой восстановления пароля'
+        return '<center><h2><a href="/email">Возспользуйтейсь формой восстановления пароля</a></h2></center>'
 
 
 # отрисовка шаблонов

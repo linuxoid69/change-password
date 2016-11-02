@@ -27,7 +27,7 @@
       </form>
       %end
         %if ok != '0':
-        <a id='mainpage' href="/">На главную</a>
+        <!--<a id='mainpage' href="/">На главную</a>-->
         %end
       <div class="alerts">
         %for type, text in get('alerts', []):
