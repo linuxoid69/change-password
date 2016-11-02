@@ -118,3 +118,10 @@ button:hover {
 #mainpage {
   align-content: center;
 }
+
+#inform {
+  color:crimson;
+  font-family: Arial;
+  border: solid lightgray 1px;
+  text-align: center;
+}
