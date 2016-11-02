@@ -29,6 +29,7 @@ class Email(object):
         self.msg['Subject'] = subj
         self.msg['From'] = sender
         self.msg['To'] = recipients
+        self.msg['Reply-To'] = sender
         self.part = MIMEText(msg_html, 'html')
         self.msg.attach(self.part)
         self.server.sendmail(sender, recipients, self.msg.as_string())
