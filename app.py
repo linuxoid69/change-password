@@ -77,7 +77,9 @@ def post_email(db):
 
         html_message = """\
         <html>
-        <head></head>
+        <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        </head>
         <body>
     	    <p>Восстановление пароля!<br>
     	       На это письмо не нужно отвечать.<br>
@@ -145,7 +147,9 @@ def restore_passwd(db, id_user, id_session):
 
         html_message = """\
             <html>
-            <head></head>
+            <head>
+                <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            </head>
             <body>
         	    <p><br>
                     Ваш пароль успешно изменен.<br>
