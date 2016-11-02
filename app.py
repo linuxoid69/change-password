@@ -59,7 +59,7 @@ def post_email(db):
         id_user = str(hash_user.hexdigest())
         hash_session = sha1(id_user)
         id_session = str(hash_session.hexdigest())
-        ip = str(request.environ.get('REMOTE_ADDR'))
+        ip = str(request.environ.get('HTTP_X_FORWARDED_FOR'))
         user_name = find_email(email)['cn'][0]
         if check_db_email(db, email):
             return email_tpl(alerts=[('error', "Письмо уже было отправлено вам на почту.(Проверьте спам)")],
