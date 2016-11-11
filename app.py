@@ -42,7 +42,9 @@ def get_email():
     image = ImageCaptcha(fonts=[CONF['captcha']['font'], CONF['captcha']['font']])
     data = image.generate(captcha)
     image.write(captcha, full_path_captcha)
-    return email_tpl(path_captcha=relative_path_captcha, ok='0')
+    return email_tpl(path_captcha=relative_path_captcha,
+                     ok='0',
+                     expire=expire_info)
 
 
 @post('/email')
@@ -50,7 +52,10 @@ def post_email(db):
     form = request.forms.getunicode
     email = form('email')
     if (captcha != form('captcha')):
-        return email_tpl(alerts=[('error', "Неверный код")], path_captcha=relative_path_captcha, ok='0')
+        return email_tpl(alerts=[('error', "Неверный код")],
+                         path_captcha=relative_path_captcha,
+                         ok='0',
+                         expire=expire_info)
 
         # каптча
 
@@ -63,7 +68,9 @@ def post_email(db):
         user_name = find_email(email)['cn'][0]
         if check_db_email(db, email):
             return email_tpl(alerts=[('error', "Письмо уже было отправлено вам на почту.(Проверьте спам)")],
-                             path_captcha=relative_path_captcha, ok='0')
+                             path_captcha=relative_path_captcha,
+                             ok='0',
+                             expire=expire_info)
 
         db.execute(
             "INSERT INTO user_code (id_user, id_session, email, username, date_start, ip) "
@@ -95,10 +102,10 @@ def post_email(db):
 
         sm.send_mail(CONF['mail']['login'], email, 'Восстановление пароля', html_message)
         return email_tpl(alerts=[('success', "Пароль был отправлен на почту")],
-                         path_captcha=relative_path_captcha, ok='1')
+                         path_captcha=relative_path_captcha, ok='1',expire=expire_info)
     else:
         return email_tpl(alerts=[('error', "Пользователь с таким ящиком не найден")],
-                         path_captcha=relative_path_captcha, ok='0')
+                         path_captcha=relative_path_captcha, ok='0',expire=expire_info)
 
 
 @post('/')
@@ -329,6 +336,8 @@ class Error(Exception):
 
 BASE_DIR = path.dirname(__file__)
 CONF = read_config()
+
+expire_info = CONF['db']['date_expire']
 
 bottle.TEMPLATE_PATH = [BASE_DIR]
 
