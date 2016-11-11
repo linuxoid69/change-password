@@ -5,7 +5,7 @@ from bottle import get, post, static_file, request, route, template, install
 from bottle import SimpleTemplate
 from configparser import ConfigParser
 from ldap3 import Connection, LDAPBindError, LDAPInvalidCredentialsResult, Server
-from ldap3 import AUTH_SIMPLE, SUBTREE, MODIFY_REPLACE
+from ldap3 import AUTH_SIMPLE, SUBTREE, MODIFY_REPLACE, HASHED_MD5
 from ldap3.core.exceptions import LDAPConstraintViolationResult, LDAPUserNameIsMandatoryError
 import os
 from os import path
@@ -253,8 +253,11 @@ def change_password_ldap_privileges(user_ldap, new_passwd):
 
     with connect_ldap(user=CONF['ldap']['admin_user'], password=CONF['ldap']['admin_pass']) as c:
         c.bind()
-        username = 'cn={0:s},{1:s}'.format(user_ldap, CONF['ldap']['base'])
-        c.modify(username, {'userPassword': [(MODIFY_REPLACE, [new_passwd])]})
+        # username = 'cn={0:s},{1:s}'.format(user_ldap, CONF['ldap']['base'])
+        username = find_user_dn(c, user_ldap)
+        # c.modify(username, {'userPassword': [(MODIFY_REPLACE, [new_passwd])]},HASHED_MD5)
+        c.extend.standard.modify_password(username,None,new_passwd,HASHED_MD5)
+
 
 
 def find_user_dn(conn, uid):
