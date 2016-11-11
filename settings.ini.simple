@@ -29,3 +29,5 @@ passwd = secret
 
 [db]
 dbname = local.db
+# введите чифру в часах
+date_expire = 6

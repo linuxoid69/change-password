@@ -2,16 +2,43 @@
 # coding: utf-8
 from os import path, unlink
 from time import sleep, mktime
-from bottle.ext import sqlite
+# from bottle.ext import sqlite
 import sys
 from  glob import glob
 from configparser import ConfigParser
 import datetime
+import sqlite3
+import traceback
+
+
+def delete_old_fields(dbname, expire):
+    '''
+    Запрос к базе данных
+    :param dbname:
+    :return:
+    '''
+    try:
+        conn = sqlite3.connect(dbname)
+        c = conn.cursor()
+        c.execute("DELETE FROM user_code WHERE strftime('%s',datetime('now','localtime'))"
+                  " - date_start >=  {0:d}".format(expire))
+        conn.commit()
+        conn.close()
+        return True
+
+    except:
+        print traceback.print_exception()
+        print 'don\'t connect to database'
+        print dbname
+        return False
 
 
 def remove_captcha(img, extension='png', expire=300):
     '''
-    Удаляем остаточные файлы каптчи старше 5 минут
+        Удаляем остаточные файлы каптчи старше 5 минут
+    :param img:
+    :param extension:
+    :param expire:
     :return:
     '''
     try:
@@ -23,15 +50,6 @@ def remove_captcha(img, extension='png', expire=300):
         return True
     except:
         return False
-
-
-def clean_db():
-    '''
-    Удаляем старые записи из базы данных которые старше 6 часов
-    :return:
-    '''
-    pass
-
 
 def unixtime():
     """
@@ -53,8 +71,9 @@ def read_config(conf):
 
 
 CONF = read_config('../settings.ini')
-remove_captcha('../{0:s}'.format(CONF['captcha']['path_image']),expire=CONF['captcha']['expire'])
 
-#
-# while True:
-#     sleep(60)
+while True:
+    remove_captcha('../{0:s}'.format(CONF['captcha']['path_image']), expire=CONF['captcha']['expire'])
+    delete_old_fields('../{0:s}'.format(CONF['db']['dbname']), int(int(CONF['db']['date_expire']) * 60 * 60))
+    sleep(60)
+
