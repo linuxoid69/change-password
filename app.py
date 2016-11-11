@@ -262,8 +262,8 @@ def change_password_ldap_privileges(user_ldap, new_passwd):
         c.bind()
         # username = 'cn={0:s},{1:s}'.format(user_ldap, CONF['ldap']['base'])
         username = find_user_dn(c, user_ldap)
-        # c.modify(username, {'userPassword': [(MODIFY_REPLACE, [new_passwd])]},HASHED_MD5)
-        c.extend.standard.modify_password(username,None,new_passwd,HASHED_MD5)
+        c.modify(username, {'userPassword': [(MODIFY_REPLACE, [new_passwd])]})
+        # c.extend.standard.modify_password(username,None,new_passwd,HASHED_MD5)
 
 
 
