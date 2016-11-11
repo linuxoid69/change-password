@@ -2,13 +2,10 @@
 # coding: utf-8
 from os import path, unlink
 from time import sleep, mktime
-# from bottle.ext import sqlite
-import sys
 from  glob import glob
 from configparser import ConfigParser
 import datetime
 import sqlite3
-import traceback
 
 
 def delete_old_fields(dbname, expire):
@@ -27,7 +24,6 @@ def delete_old_fields(dbname, expire):
         return True
 
     except:
-        print traceback.print_exception()
         print 'don\'t connect to database'
         print dbname
         return False
@@ -50,6 +46,7 @@ def remove_captcha(img, extension='png', expire=300):
         return True
     except:
         return False
+
 
 def unixtime():
     """
@@ -76,4 +73,3 @@ while True:
     remove_captcha('../{0:s}'.format(CONF['captcha']['path_image']), expire=CONF['captcha']['expire'])
     delete_old_fields('../{0:s}'.format(CONF['db']['dbname']), int(int(CONF['db']['date_expire']) * 60 * 60))
     sleep(60)
-
