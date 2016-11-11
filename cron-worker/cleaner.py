@@ -16,7 +16,7 @@ def remove_captcha(img, extension='png', expire=300):
     '''
     try:
         for i in glob('{0:s}/*.{1:s}'.format(img, extension)):
-            if (unixtime() - int(path.getctime(i))) >= expire:
+            if (unixtime() - int(path.getctime(i))) >= int(expire):
                 print 'delete file {0:s}'.format(i)
                 unlink(i)
 
@@ -30,6 +30,7 @@ def clean_db():
     Удаляем старые записи из базы данных которые старше 6 часов
     :return:
     '''
+    pass
 
 
 def unixtime():
@@ -52,7 +53,6 @@ def read_config(conf):
 
 
 CONF = read_config('../settings.ini')
-
 remove_captcha('../{0:s}'.format(CONF['captcha']['path_image']),expire=CONF['captcha']['expire'])
 
 #
