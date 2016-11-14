@@ -8,13 +8,15 @@ from ldap3 import Connection, LDAPBindError, LDAPInvalidCredentialsResult, Serve
 from ldap3 import AUTH_SIMPLE, SUBTREE, MODIFY_REPLACE, HASHED_MD5
 from ldap3.core.exceptions import LDAPConstraintViolationResult, LDAPUserNameIsMandatoryError
 import os
-from os import path
+from os import path, urandom
 import sys
 import uuid
 from bottle.ext import sqlite
 from hashlib import sha1
 import time
 import datetime
+from base64 import encodestring as encode
+from base64 import decodestring as decode
 
 from captcha.image import ImageCaptcha
 
@@ -102,10 +104,10 @@ def post_email(db):
 
         sm.send_mail(CONF['mail']['login'], email, 'Восстановление пароля', html_message)
         return email_tpl(alerts=[('success', "Пароль был отправлен на почту")],
-                         path_captcha=relative_path_captcha, ok='1',expire=expire_info)
+                         path_captcha=relative_path_captcha, ok='1', expire=expire_info)
     else:
         return email_tpl(alerts=[('error', "Пользователь с таким ящиком не найден")],
-                         path_captcha=relative_path_captcha, ok='0',expire=expire_info)
+                         path_captcha=relative_path_captcha, ok='0', expire=expire_info)
 
 
 @post('/')
@@ -143,7 +145,7 @@ def restore_passwd(db, id_user, id_session):
         email = db.execute('SELECT email FROM user_code WHERE id_user="{0:s}"  '
                            'AND id_session="{1:s}" LIMIT 1'.format(id_user, id_session)).fetchone()[0]
 
-        change_password_ldap_privileges(username, form('passwd_1'))
+        change_password_ldap_privileges(username, makeSecret(form('passwd_1')))
 
         db.execute('DELETE FROM user_code WHERE id_user="{0:s}" AND id_session="{1:s}"'.format(id_user, id_session))
 
@@ -249,6 +251,7 @@ def change_password_ad(username, old_pass, new_pass):
         c.extend.microsoft.modify_password(user_dn, new_pass, old_pass)
 
 
+# TODO переделать шифрование пароля
 def change_password_ldap_privileges(user_ldap, new_passwd):
     """
     Изменение пароля с правами администратора
@@ -264,7 +267,6 @@ def change_password_ldap_privileges(user_ldap, new_passwd):
         username = find_user_dn(c, user_ldap)
         c.modify(username, {'userPassword': [(MODIFY_REPLACE, [new_passwd])]})
         # c.extend.standard.modify_password(username,None,new_passwd,HASHED_MD5)
-
 
 
 def find_user_dn(conn, uid):
@@ -302,6 +304,18 @@ def unixtime():
     """
     now = datetime.datetime.now()
     return int(time.mktime(now.timetuple()))
+
+
+def makeSecret(password):
+    '''
+    Создание шифрованного пароля
+    :param password:
+    :return:
+    '''
+    salt = urandom(4)
+    h = sha1(password)
+    h.update(salt)
+    return "{SSHA}" + encode(h.digest() + salt)
 
 
 def check_db_email(db, email):
